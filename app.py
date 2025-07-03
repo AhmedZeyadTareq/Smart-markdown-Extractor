@@ -40,7 +40,7 @@ with st.sidebar:
     st.write("📌 Data Scientist, AI Developer.")
     st.write("[GitHub](https://github.com/AhmedZeyadTareq) | [LinkedIn](https://www.linkedin.com/in/ahmed-zeyad-tareq) | [Kaggle](https://www.kaggle.com/ahmedzeyadtareq)")
 
-uploaded_file = st.file_uploader("📂 Choose File:", type=["pdf", "txt", "jpg", "png"])
+uploaded_file = st.file_uploader("📂 Choose File:", type=None)
 
 
 # ==== Functions ====
