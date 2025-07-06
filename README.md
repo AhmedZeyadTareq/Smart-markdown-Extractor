@@ -73,10 +73,14 @@ tiktoken
 ### Method 2: Deployed Version
 Access the live application at: [Your Streamlit Deployment URL]
 
-### Method 3: Docker (Optional)
+### Method 3: Commands (Optional)
 ```bash
-docker build -t smart-content-extraction .
-docker run -p 8501:8501 smart-content-extraction
+from src.app import convert_file, reorganize_markdown, rag
+
+md_content = convert_file("document.pdf")
+organized_md = reorganize_markdown("md_content")
+answer = rag(organized_md, "What is this document about?"))
+print(answer)
 ```
 
 ## 📖 How to Use
