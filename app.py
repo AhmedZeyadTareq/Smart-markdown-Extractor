@@ -7,23 +7,22 @@ warnings.filterwarnings("ignore",
 # ==== Imports ====
 import os
 import tempfile
-
-import fitz  # PyMuPDF
-import pytesseract
 import tiktoken
 from PIL import Image
 from markitdown import MarkItDown
 from openai import OpenAI
-
+from llama_parse import LlamaParse
 import streamlit as st
 
 # ==== Config ====
-OPENAI_API_KEY = "OPENAI_API_KEY"
+LLAMA_API = os.getenv("LLAMA_API_PARSE")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LLM_MODEL = "gpt-4.1-mini"
 
-# ==== Streamlit UI ====
-st.set_page_config(page_title="🧠 AI File Chat", layout="centered")
-st.title("🧠 Content Extraction")
+# Title Line (Slightly smaller than st.title)
+st.header("💡Smart Content Extraction")
+# Description Line (Subtle text)
+st.caption("🎲 Extract & derive any type of content with smart techniques.")
 
 # Sidebar
 logo_link = "formal image.jpg"
@@ -42,24 +41,10 @@ with st.sidebar:
 
 uploaded_file = st.file_uploader("📂 Choose File:", type=None)
 
+#####################################
+#####################################
 
 # ==== Functions ====
-
-def pdf_to_images(file_obj, dpi: int = 300) -> list[Image.Image]:
-    """Convert PDF to images"""
-    if isinstance(file_obj, str):
-        doc = fitz.open(file_obj)
-    else:
-        doc = fitz.open(stream=file_obj.read(), filetype="pdf")
-
-    pages = []
-    for page in doc:
-        pix = page.get_pixmap(dpi=dpi, colorspace="rgb")
-        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-        pages.append(img)
-    doc.close()
-    return pages
-
 
 def convert_file(path: str) -> str:
     """Convert file to text (prefer structured, fallback to OCR)"""
@@ -69,7 +54,7 @@ def convert_file(path: str) -> str:
         md = MarkItDown(enable_plugins=False)
         result = md.convert(path)
         if result.text_content.strip():
-            print(f"[✔] Markdown extracted. Saving...")
+            print(f"[✔] Markdown extracted.")
             # with open('data.md', 'a', encoding='utf-8') as f:
             #     f.write(result.text_content)
             return result.text_content
@@ -80,25 +65,21 @@ def convert_file(path: str) -> str:
 
     print("[🔍] OCR Started...")
     try:
-        _ = fitz.open(path)
-        is_pdf = True
-    except Exception:
-        is_pdf = False
+        # Initialize the parser
+        parser = LlamaParse(api_key=LLAMA_API, result_type="markdown")
 
-    if is_pdf:
-        pages = pdf_to_images(path)
-    elif ext in ['.jpg', '.jpeg', '.png', '.bmp', '.tiff']:
-        pages = [Image.open(path)]
-    else:
-        raise Exception(f"Unsupported file format: {ext or 'unknown'}")
+        # Parse the file using its path
+        documents = parser.load_data(path)
 
-    full_text = ""
-    for img in pages:
-        page_text = pytesseract.image_to_string(img, lang='eng')
-        full_text += "\n" + page_text
+        if not documents:
+            st.error("Failed to parse the document - no content returned")
+            return ""
 
-    return full_text
+        return documents[0].text
 
+    except Exception as e:
+        st.error(f"Error parsing document: {str(e)}")
+        return ""
 
 def reorganize_markdown(raw: str) -> str:
     """Reorganize markdown via OpenAI"""
@@ -143,7 +124,7 @@ def count_tokens(content: str, model="gpt-4-turbo"):
 if uploaded_file:
     suffix = os.path.splitext(uploaded_file.name)[1]
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-        tmp_file.write(uploaded_file.read())
+        tmp_file.write(uploaded_file.getvalue())
         file_path = tmp_file.name
 
         if st.button("Start 🔁"):
@@ -152,7 +133,7 @@ if uploaded_file:
             st.session_state["raw_text"] = raw_text
 
         if "raw_text" in st.session_state:
-            if st.button("🧹 Reorganize to Content"):
+            if st.button("🧹 Reorganize Content"):
                 organized = reorganize_markdown(st.session_state["raw_text"])
                 st.session_state["organized_text"] = organized
                 st.markdown(organized)
@@ -163,9 +144,12 @@ if uploaded_file:
                     mime="text/plain",
                     key="download_txt"
                 )
-            if "organized_text" in st.session_state:
-                question = st.text_input("Ask Anything about Content..❓")
-                if st.button("💬 Send"):
-                    answer = rag(st.session_state["organized_text"], question)
-                    st.markdown(f"**Question❓:**\n{question}")
-                    st.markdown(f"**Answer💡:**\n{answer}")
+                
+            #if "organized_text" in st.session_state:
+            question = st.text_input("Ask Anything about Content..❓")
+            if st.button("💬 Send"):
+                content_to_use = st.session_state.get("organized_text", st.session_state["raw_text"])
+                answer = rag(content_to_use, question)
+                st.markdown(f"**Question❓:**\n{question}")
+                st.markdown(f"**Answer💡:**\n{answer}")
+                    
