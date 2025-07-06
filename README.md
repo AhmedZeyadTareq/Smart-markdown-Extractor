@@ -78,7 +78,7 @@ Access the live application at: [Your Streamlit Deployment URL]
 from app import convert_file, reorganize_markdown, rag
 
 md_content = convert_file("document.pdf")
-organized_md = reorganize_markdown("md_content")
+organized_md = reorganize_markdown(md_content)
 answer = rag(organized_md, "What is this document about?")
 print(answer)
 ```
