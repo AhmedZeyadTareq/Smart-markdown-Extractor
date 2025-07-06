@@ -32,6 +32,7 @@ Smart Content Extraction is designed to handle diverse file formats and extract 
    ```bash
    git clone https://github.com/AhmedZeyadTareq/Smart-markdown-Extractor.git
    cd Smart-markdown-Extractor
+   python -m venv venv
    ```
 
 2. **Install dependencies:**
