@@ -1,6 +1,6 @@
 # 💡 Smart Content Extraction
 
-A powerful Streamlit application that intelligently extracts and processes content from various file formats using advanced AI techniques. This tool combines structured text extraction with OCR capabilities and provides intelligent content reorganization and question-answering features.
+A powerful Streamlit application that intelligently extracts and processes content from various file formats using advanced AI techniques. This tool combines structured text extraction with OCR capabilities and provides intelligent content reorganization and question-answering features. [Try it live](https://contenttomarkdownocr-ahmedtareq.streamlit.app/)
 
 ## 🎯 Overview
 
