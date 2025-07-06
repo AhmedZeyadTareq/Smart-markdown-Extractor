@@ -4,3 +4,4 @@ openai
 tiktoken
 Pillow
 llama-parse
+python-dotenv
