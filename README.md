@@ -30,7 +30,7 @@ Smart Content Extraction is designed to handle diverse file formats and extract 
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/AhmedZeyadTareq/smart-content-extraction.git
+   git clone https://github.com/AhmedZeyadTareq/Smart-content-Extraction.git
    cd smart-content-extraction
    ```
 
