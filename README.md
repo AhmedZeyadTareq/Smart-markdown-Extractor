@@ -41,10 +41,10 @@ Smart Content Extraction is designed to handle diverse file formats and extract 
    pip install -r requirements.txt
    ```
 
-3. **Set up environment variables:**
+3. **Set up .env file with API keys:**
    ```bash
-   export OPENAI_API_KEY="your-openai-api-key"
-   export LLAMA_API_PARSE="your-llamaparse-api-key"
+   OPENAI_API_KEY="your-openai-api-key"
+   LLAMA_API_PARSE="your-llamaparse-api-key"
    ```
 
 4. **Run the application:**
@@ -73,13 +73,13 @@ tiktoken
 ### Method 2: Deployed Version
 Access the live application at: [Your Streamlit Deployment URL]
 
-### Method 3: Commands (Optional)
+### Method 3: import the function in another code (Optional)
 ```bash
-from src.app import convert_file, reorganize_markdown, rag
+from app import convert_file, reorganize_markdown, rag
 
 md_content = convert_file("document.pdf")
 organized_md = reorganize_markdown("md_content")
-answer = rag(organized_md, "What is this document about?"))
+answer = rag(organized_md, "What is this document about?")
 print(answer)
 ```
 
