@@ -43,8 +43,8 @@ Smart Content Extraction is designed to handle diverse file formats and extract 
 
 3. **Set up .env file with API keys:**
    ```bash
-   OPENAI_API_KEY="your-openai-api-key"
-   LLAMA_API_PARSE="your-llamaparse-api-key"
+   OPENAI_API_KEY=your-openai-api-key
+   LLAMA_API_PARSE=your-llamaparse-api-key
    ```
 
 4. **Run the application:**
@@ -61,6 +61,7 @@ llama-parse
 markitdown
 pillow
 tiktoken
+python-dotenv
 ```
 
 ## 🚀 Usage
@@ -73,7 +74,7 @@ tiktoken
 ### Method 2: Deployed Version
 Access the live application at: [Try it live](https://contenttomarkdownocr-ahmedtareq.streamlit.app/)
 
-### Method 3: import the function in another code (Optional)
+### Method 3: Import Functions in Your Code (Optional)
 ```bash
 from app import convert_file, reorganize_markdown, rag
 
