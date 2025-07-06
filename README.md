@@ -71,7 +71,7 @@ tiktoken
 3. Open your browser to `http://localhost:8501`
 
 ### Method 2: Deployed Version
-Access the live application at: [[Your Streamlit Deployment URL](https://contenttomarkdownocr-ahmedtareq.streamlit.app/)]
+Access the live application at: [Try it live](https://contenttomarkdownocr-ahmedtareq.streamlit.app/)
 
 ### Method 3: import the function in another code (Optional)
 ```bash
