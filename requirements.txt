@@ -2,7 +2,5 @@ markitdown[all]
 streamlit
 openai
 tiktoken
-markitdown
-pytesseract
-PyMuPDF
 Pillow
+llama-parse
