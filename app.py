@@ -1,3 +1,9 @@
+
+# SQLite3 fix for ChromaDB on Streamlit Cloud
+__import__('pysqlite3')
+import sys
+sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+
 import warnings
 
 warnings.filterwarnings("ignore",
