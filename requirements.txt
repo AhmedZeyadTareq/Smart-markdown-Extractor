@@ -5,3 +5,6 @@ tiktoken
 Pillow
 llama-parse
 python-dotenv
+langchain
+langchain-openai
+chromadb
