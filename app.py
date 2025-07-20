@@ -28,6 +28,9 @@ from langchain_openai import OpenAIEmbeddings, OpenAI as LangChainOpenAI
 from langchain_chroma import Chroma
 from langchain.chains import RetrievalQA
 from langchain.schema import Document
+from langchain.indexes import VectorstoreIndexCreator
+from langchain.document_loaders import TextLoader
+import json
 
 # ==== Config ====
 LLAMA_API = os.getenv("LLAMA_API_PARSE")
@@ -117,40 +120,57 @@ def reorganize_markdown(raw: str) -> str:
     print("===Reorganized Done===")
     return completion.choices[0].message.content
 
-def add_to_vectorstore(content: str):
-    """Add content to existing vector store or create new one"""
-    # Create document from content
-    doc = Document(page_content=content)
-    
-    # Split the document into chunks
-    splitter = CharacterTextSplitter(chunk_size=200, chunk_overlap=50)
-    chunks = splitter.split_documents([doc])
-    print(f"Adding {len(chunks)} chunks to vector store")
-    
-    # Create embeddings
-    embeddings = OpenAIEmbeddings()
-    
-    # Check if vector store already exists
-    if "vectorstore" not in st.session_state:
-        # Create new vector store
-        st.session_state["vectorstore"] = Chroma.from_documents(
-            documents=chunks, 
-            embedding=embeddings)
-        print("Created new vector store")
-    else:
-        # Add to existing vector store
-        st.session_state["vectorstore"].add_documents(chunks)
-        print("Added to existing vector store")
-    
-    # Setup/update QA chain
-    llm = LangChainOpenAI(temperature=0, model="gpt-4o-mini")
-    retriever = st.session_state["vectorstore"].as_retriever()
-    st.session_state["qa_chain"] = RetrievalQA.from_chain_type(
-        llm=llm, 
-        retriever=retriever, 
-        chain_type="stuff", 
-        verbose=True
-    )
+def add_to_vectorstore(content: str, filename: str = "temp_content.txt"):
+    """Add content to vector store using VectorstoreIndexCreator"""
+    try:
+        # Save content to a temporary file (TextLoader needs a file path)
+        temp_file_path = f"temp_{filename}"
+        with open(temp_file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        # Load the document using LangChain's TextLoader
+        text_loader = TextLoader(temp_file_path, encoding="utf-8")
+        
+        # Initialize OpenAI embedding model
+        embeddings = OpenAIEmbeddings(api_key=OPENAI_API_KEY)
+        
+        # Create a vector index from the document
+        if "vectorstore_index" not in st.session_state:
+            # Create new index
+            st.session_state["vectorstore_index"] = VectorstoreIndexCreator(
+                embedding=embeddings,
+                text_splitter=CharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+            ).from_loaders([text_loader])
+            st.session_state["loaded_files"] = [temp_file_path]
+            print("Created new vector store index")
+        else:
+            # For multiple files, we need to recreate the index with all files
+            st.session_state["loaded_files"].append(temp_file_path)
+            
+            # Create loaders for all files
+            all_loaders = []
+            for file_path in st.session_state["loaded_files"]:
+                if os.path.exists(file_path):
+                    all_loaders.append(TextLoader(file_path, encoding="utf-8"))
+            
+            # Recreate index with all documents
+            st.session_state["vectorstore_index"] = VectorstoreIndexCreator(
+                embedding=embeddings,
+                text_splitter=CharacterTextSplitter(chunk_size=500, chunk_overlap=100)
+            ).from_loaders(all_loaders)
+            print(f"Updated vector store index with {len(all_loaders)} documents")
+        
+        # Store the LLM for later use
+        st.session_state["llm"] = OpenAI(temperature=0.1, model="gpt-4o-mini", api_key=OPENAI_API_KEY)
+        
+        # Clean up temporary file (optional - keep if you want to maintain file history)
+        # os.unlink(temp_file_path)
+        
+    except Exception as e:
+        st.error(f"Error adding to vector store: {str(e)}")
+        # Clean up on error
+        if os.path.exists(temp_file_path):
+            os.unlink(temp_file_path)
 
 def rag(question: str) -> str:
     """Answer questions from vector database"""
