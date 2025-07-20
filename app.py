@@ -14,10 +14,22 @@ from openai import OpenAI
 from llama_parse import LlamaParse
 import streamlit as st
 
+# RAG imports
+import shutil
+from langchain_community.document_loaders import TextLoader
+from langchain.text_splitter import CharacterTextSplitter
+from langchain_openai import OpenAIEmbeddings, OpenAI as LangChainOpenAI
+from langchain_chroma import Chroma
+from langchain.chains import RetrievalQA
+from langchain.schema import Document
+
 # ==== Config ====
 LLAMA_API = os.getenv("LLAMA_API_PARSE")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 LLM_MODEL = "gpt-4.1-mini"
+
+# Clean up ChromaDB on app start
+shutil.rmtree("chroma_DB", ignore_errors=True)
 
 # Title Line (Slightly smaller than st.title)
 st.header("💡Smart Content Extraction")
@@ -99,18 +111,34 @@ def reorganize_markdown(raw: str) -> str:
     print("===Reorganized Done===")
     return completion.choices[0].message.content
 
+def setup_vectorstore(content: str):
+    """Setup vector store with content"""
+    # Create document from content
+    doc = Document(page_content=content)
+    
+    # Split the document into chunks
+    splitter = CharacterTextSplitter(chunk_size=200, chunk_overlap=50)
+    chunks = splitter.split_documents([doc])
+    print(f"Total chunks: {len(chunks)}")
+    
+    # Create embeddings and vector store
+    embeddings = OpenAIEmbeddings()
+    vectorstore = Chroma.from_documents(documents=chunks, embedding=embeddings, persist_directory="chroma_DB")
+    
+    # Setup QA chain
+    llm = LangChainOpenAI(temperature=0, model="gpt-4o-mini")
+    retriever = vectorstore.as_retriever()
+    chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff", verbose=True)
+    
+    return chain
 
 def rag(con: str, question: str) -> str:
-    """Answer questions from provided content"""
-    client = OpenAI()
-    completion = client.chat.completions.create(
-        model=LLM_MODEL,
-        messages=[
-            {"role": "user", "content": question},
-            {"role": "system", "content": f"You are an assistant. Answer concisely from the following content:\n {con}"}
-        ]
-    )
-    return completion.choices[0].message.content
+    """Answer questions from provided content using vector database"""
+    if "qa_chain" not in st.session_state:
+        st.session_state["qa_chain"] = setup_vectorstore(con)
+    
+    response = st.session_state["qa_chain"].invoke({"query": question})
+    return response['result']
 
 
 def count_tokens(content: str, model="gpt-4-turbo"):
@@ -152,4 +180,3 @@ if uploaded_file:
                 answer = rag(content_to_use, question)
                 st.markdown(f"**Question❓:**\n{question}")
                 st.markdown(f"**Answer💡:**\n{answer}")
-                    
