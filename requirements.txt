@@ -10,3 +10,4 @@ langchain-openai
 langchain_community
 langchain_chroma
 langchain-core
+pysqlite3-binary
