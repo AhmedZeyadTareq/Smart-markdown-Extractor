@@ -264,6 +264,7 @@ if uploaded_file:
                         st.text_area(f"📄 Content from {file.name}:", raw_text, height=200, key=f"content_{i}")
                         
                         # Automatically add to vector store after extraction
+                        raw = reorganize_markdown(raw_text)
                         add_to_vectorstore(raw_text, filename=file.name)
                         st.success(f"✅ Content from {file.name} added to vector database!")
                         
