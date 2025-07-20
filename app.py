@@ -51,7 +51,7 @@ with st.sidebar:
     st.write("📌 Data Scientist, AI Developer.")
     st.write("[GitHub](https://github.com/AhmedZeyadTareq) | [LinkedIn](https://www.linkedin.com/in/ahmed-zeyad-tareq) | [Kaggle](https://www.kaggle.com/ahmedzeyadtareq)")
 
-uploaded_file = st.file_uploader("📂 Choose File:", type=None)
+uploaded_file = st.file_uploader("📂 Choose File:", type=None, accept_multiple_files=True)
 
 #####################################
 #####################################
@@ -111,31 +111,48 @@ def reorganize_markdown(raw: str) -> str:
     print("===Reorganized Done===")
     return completion.choices[0].message.content
 
-def setup_vectorstore(content: str):
-    """Setup vector store with content"""
+def add_to_vectorstore(content: str):
+    """Add content to existing vector store or create new one"""
     # Create document from content
     doc = Document(page_content=content)
     
     # Split the document into chunks
     splitter = CharacterTextSplitter(chunk_size=200, chunk_overlap=50)
     chunks = splitter.split_documents([doc])
-    print(f"Total chunks: {len(chunks)}")
+    print(f"Adding {len(chunks)} chunks to vector store")
     
-    # Create embeddings and vector store
+    # Create embeddings
     embeddings = OpenAIEmbeddings()
-    vectorstore = Chroma.from_documents(documents=chunks, embedding=embeddings, persist_directory="chroma_DB")
     
-    # Setup QA chain
+    # Check if vector store already exists
+    if "vectorstore" not in st.session_state:
+        # Create new vector store
+        st.session_state["vectorstore"] = Chroma.from_documents(
+            documents=chunks, 
+            embedding=embeddings, 
+            persist_directory="chroma_DB"
+        )
+        print("Created new vector store")
+    else:
+        # Add to existing vector store
+        st.session_state["vectorstore"].add_documents(chunks)
+        print("Added to existing vector store")
+    
+    # Setup/update QA chain
     llm = LangChainOpenAI(temperature=0, model="gpt-4o-mini")
-    retriever = vectorstore.as_retriever()
-    chain = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, chain_type="stuff", verbose=True)
-    
-    return chain
+    retriever = st.session_state["vectorstore"].as_retriever()
+    st.session_state["qa_chain"] = RetrievalQA.from_chain_type(
+        llm=llm, 
+        retriever=retriever, 
+        chain_type="stuff", 
+        verbose=True
+    )
 
-def rag(con: str, question: str) -> str:
-    """Answer questions from provided content using vector database"""
+def rag(question: str) -> str:
+    """Answer questions from vector database"""
     if "qa_chain" not in st.session_state:
-        st.session_state["qa_chain"] = setup_vectorstore(con)
+        st.error("No content in vector database. Please extract files first.")
+        return "No content available for querying."
     
     response = st.session_state["qa_chain"].invoke({"query": question})
     return response['result']
@@ -150,33 +167,47 @@ def count_tokens(content: str, model="gpt-4-turbo"):
 # ==== Main Process ====
 
 if uploaded_file:
-    suffix = os.path.splitext(uploaded_file.name)[1]
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-        tmp_file.write(uploaded_file.getvalue())
-        file_path = tmp_file.name
+    for i, file in enumerate(uploaded_file):
+        st.write(f"**File {i+1}: {file.name}**")
+        suffix = os.path.splitext(file.name)[1]
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
+            tmp_file.write(file.getvalue())
+            file_path = tmp_file.name
 
-        if st.button("Start 🔁"):
-            raw_text = convert_file(file_path)
-            st.text_area("📄 Content:", raw_text, height=200)
-            st.session_state["raw_text"] = raw_text
-
-        if "raw_text" in st.session_state:
-            if st.button("🧹 Reorganize Content"):
-                organized = reorganize_markdown(st.session_state["raw_text"])
-                st.session_state["organized_text"] = organized
-                st.markdown(organized)
-                st.download_button(
-                    label="⬇️ Download as TXT",
-                    data=organized,
-                    file_name="reorganized_content.txt",
-                    mime="text/plain",
-                    key="download_txt"
-                )
+            if st.button(f"Start 🔁 - {file.name}", key=f"start_{i}"):
+                raw_text = convert_file(file_path)
+                st.text_area(f"📄 Content from {file.name}:", raw_text, height=200, key=f"content_{i}")
                 
-            #if "organized_text" in st.session_state:
-            question = st.text_input("Ask Anything about Content..❓")
-            if st.button("💬 Send"):
-                content_to_use = st.session_state.get("organized_text", st.session_state["raw_text"])
-                answer = rag(content_to_use, question)
-                st.markdown(f"**Question❓:**\n{question}")
-                st.markdown(f"**Answer💡:**\n{answer}")
+                # Automatically add to vector store after extraction
+                add_to_vectorstore(raw_text)
+                st.success(f"✅ Content from {file.name} added to vector database!")
+                
+                # Store in session state for reorganization
+                if f"raw_text_{i}" not in st.session_state:
+                    st.session_state[f"raw_text_{i}"] = []
+                st.session_state[f"raw_text_{i}"].append(raw_text)
+
+            if f"raw_text_{i}" in st.session_state and st.session_state[f"raw_text_{i}"]:
+                if st.button(f"🧹 Reorganize Content - {file.name}", key=f"reorganize_{i}"):
+                    organized = reorganize_markdown(st.session_state[f"raw_text_{i}"][-1])
+                    st.markdown(organized)
+                    st.download_button(
+                        label=f"⬇️ Download {file.name} as TXT",
+                        data=organized,
+                        file_name=f"reorganized_{file.name}.txt",
+                        mime="text/plain",
+                        key=f"download_txt_{i}"
+                    )
+
+# Question section (available if any content is in vector store)
+if "vectorstore" in st.session_state:
+    st.markdown("---")
+    st.markdown("### 💬 Ask Questions About All Uploaded Content")
+    question = st.text_input("Ask Anything about Content..❓")
+    if st.button("💬 Send"):
+        if question:
+            answer = rag(question)
+            st.markdown(f"**Question❓:**\n{question}")
+            st.markdown(f"**Answer💡:**\n{answer}")
+        else:
+            st.warning("Please enter a question.")
